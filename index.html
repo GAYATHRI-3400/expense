@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Income and Expense Tracker</title>
+    <style>
+        /* Styles */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            display: grid;
+            gap: 20px;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto 1fr auto;
+            grid-template-areas:
+                "title title"
+                "income expense"
+                "summary chart"
+                "tips tips";
+        }
+
+        h1, h2, h3 {
+            color: #333;
+            text-align: center;
+        }
+
+        #title {
+            grid-area: title;
+        }
+
+        #income-form, #expense-form {
+            padding: 10px;
+            background-color: #f9fafc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        #income-form {
+            grid-area: income;
+        }
+
+        #expense-form {
+            grid-area: expense;
+            display: none;
+            align-self: center;
+        }
+
+        #summary-section {
+            grid-area: summary;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        #chart-container {
+            grid-area: chart;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #tips-container {
+            grid-area: tips;
+            background-color: #f9fafc;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input, select, button {
+            width: 90%;
+            max-width: 300px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div id="title">
+            <h1>Enhanced Income and Expense Tracker</h1>
+        </div>
+        <form id="income-form">
+            <label for="total-income">Total Income:</label>
+            <input type="number" id="total-income" required placeholder="Enter your total income">
+            <button type="submit">Set Income</button>
+        </form>
+        <form id="expense-form">
+            <label for="expense-name">Expense Name:</label>
+            <input type="text" id="expense-name" required placeholder="Enter expense name">
+            <label for="expense-amount">Amount:</label>
+            <input type="number" id="expense-amount" required placeholder="Enter amount">
+            <label for="expense-date">Date:</label>
+            <input type="date" id="expense-date" required>
+            <label for="expense-category">Category:</label>
+            <select id="expense-category">
+                <option value="groceries">Groceries</option>
+                <option value="utilities">Utilities</option>
+                <option value="entertainment">Entertainment</option>
+                <option value="loan">Loan</option>
+                <option value="food">Food</option>
+                <option value="healthcare">Healthcare</option>
+                <option value="insurance">Insurance</option>
+                <option value="internet">Internet</option>
+                <option value="rent">Rent</option>
+            </select>
+            <button type="submit">Add Expense</button>
+        </form>
+        <div id="summary-section">
+            <div id="total-amount">Total Expenses: ₹0</div>
+            <div id="remaining-amount">Remaining Amount: ₹0</div>
+            <div id="savings-amount">Savings: ₹0</div>
+        </div>
+        <div id="chart-container">
+            <canvas id="expense-chart"></canvas>
+        </div>
+        <div id="tips-container">
+            <h3>Savings Tips</h3>
+            <ul id="savings-tips">
+                <li>Try to keep your monthly spending under 70% of your income.</li>
+                <li>Allocate 10% for emergency savings each month.</li>
+                <li>Consider investing 10% of your income in long-term options.</li>
+                <li>Track subscriptions and cancel unused services.</li>
+            </ul>
+        </div>
+    </div>
+    <script>
+        let totalIncome = 0;
+        let totalExpenses = 0;
+        const expenses = {};
+        let expenseChart;
+
+        document.getElementById('income-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            totalIncome = parseFloat(document.getElementById('total-income').value);
+            updateSummary();
+            document.getElementById('income-form').style.display = 'none';
+            document.getElementById('expense-form').style.display = 'flex';
+        });
+
+        document.getElementById('expense-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const expenseName = document.getElementById('expense-name').value;
+            const expenseAmount = parseFloat(document.getElementById('expense-amount').value);
+            const expenseDate = document.getElementById('expense-date').value;
+            const expenseCategory = document.getElementById('expense-category').value;
+
+            updateTotalAmount(expenseAmount, expenseCategory);
+            updateSummary();
+
+            document.getElementById('expense-form').reset();
+        });
+
+        function updateTotalAmount(amount, category) {
+            totalExpenses += amount;
+            if (!expenses[category]) expenses[category] = 0;
+            expenses[category] += amount;
+            updateChart();
+        }
+
+        function updateSummary() {
+            const remainingAmount = totalIncome - totalExpenses;
+            const savingsAmount = remainingAmount > 0 ? remainingAmount : 0;
+
+            document.getElementById('total-amount').textContent = `Total Expenses: ₹${totalExpenses.toFixed(2)}`;
+            document.getElementById('remaining-amount').textContent = `Remaining Amount: ₹${remainingAmount.toFixed(2)}`;
+            document.getElementById('savings-amount').textContent = `Savings: ₹${savingsAmount.toFixed(2)}`;
+        }
+
+        function updateChart() {
+            const ctx = document.getElementById('expense-chart').getContext('2d');
+            const categories = Object.keys(expenses);
+            const amounts = Object.values(expenses);
+
+            if (expenseChart) expenseChart.destroy();
+
+            expenseChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#FF9F40', '#4BC0C0', '#9966FF', '#FFB800'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { enabled: true },
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
